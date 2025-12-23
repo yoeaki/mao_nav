@@ -1,1 +1,8 @@
-/* /index.html 200 
+# 正确的规则 - 避免循环
+/* /index.html 200
+!/*.html
+!/*.js
+!/*.css
+!/*.png
+!/*.jpg
+!/*.ico
