@@ -32,8 +32,7 @@
     <aside class="sidebar">
       <!-- Logo区域 -->
       <div class="logo-section">
-        <img src="/logo.png" alt="logo" class="logo" />
-        <h1 class="site-title">{{ title || '猫猫导航' }}</h1>
+        <h1 class="site-title">{{ title || '资源百宝箱' }}</h1>
       </div>
 
       <!-- 分类导航 -->
@@ -64,7 +63,7 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
           </svg>
-          <span>开源不易，Star一下吧！⭐</span>
+          <span>获取更多资源，请关注抖音(资源百宝箱)：zybbx66</span>
         </a>
       </div>
     </aside>
@@ -170,9 +169,15 @@
                 target="_blank"
                 rel="noopener noreferrer"
                 class="site-card"
+                :title="site.description"
               >
                 <div class="site-icon">
-                  <img :src="site.icon" :alt="site.name" @error="handleImageError" />
+                  <template v-if="site.icon">
+                    <img :src="site.icon" :alt="site.name" @error="handleImageError($event, site)" />
+                  </template>
+                  <template v-else>
+                    <div class="text-avatar">{{ getAvatarText(site.name) }}</div>
+                  </template>
                 </div>
                 <div class="site-info">
                   <h3 class="site-name">{{ site.name }}</h3>
@@ -186,7 +191,7 @@
           <footer class="page-footer" hidden="true">
             <div class="footer-content">
               <div class="footer-info">
-                <h3>{{ title || '猫猫导航' }}</h3>
+                <h3>{{ title || '资源百宝箱' }}</h3>
                 <p>一个简洁、美观的导航网站，收录优质网站资源</p>
               </div>
 
@@ -206,7 +211,7 @@
             </div>
 
             <div class="footer-bottom">
-              <p>&copy; {{ new Date().getFullYear() }} 猫猫导航 - 由 <a href="https://github.com/maodeyu180" target="_blank" rel="noopener noreferrer">maodeyu180</a> 用 ❤️ 制作</p>
+              <p>&copy; {{ new Date().getFullYear() }} 资源百宝箱 - 由 <a href="https://github.com/maodeyu180" target="_blank" rel="noopener noreferrer">maodeyu180</a> 用 ❤️ 制作</p>
               <p class="footer-tech">基于 Vue.js 构建 | <a href="https://github.com/maodeyu180/mao_nav" target="_blank" rel="noopener noreferrer">查看源代码</a></p>
             </div>
           </footer>
@@ -378,10 +383,24 @@ const handleSearch = () => {
 }
 
 // 处理图片加载错误
-const handleImageError = (event) => {
-  // 设置默认的 favicon.ico 作为 fallback 图片
-  event.target.src = '/favicon.ico'
+const handleImageError = (event, site) => {
+  // 隐藏原始图片
+  event.target.style.display = 'none'
+  // 创建文本头像元素
+  const textAvatar = document.createElement('div')
+  textAvatar.className = 'text-avatar'
+  textAvatar.textContent = getAvatarText(site.name)
+  // 添加到site-icon容器中
+  event.target.parentElement.appendChild(textAvatar)
   event.target.onerror = null // 防止无限循环
+}
+
+// 获取头像文本，处理空名称情况
+const getAvatarText = (name) => {
+  if (!name || name.trim() === '') {
+    return '?'
+  }
+  return name.charAt(0)
 }
 
 // 移动端菜单控制
@@ -542,7 +561,7 @@ onUnmounted(() => {
 
 /* 左侧边栏样式 */
 .sidebar {
-  width: 280px;
+  width: 220px;
   background-color: #2c3e50;
   color: white;
   padding: 0;
@@ -555,24 +574,29 @@ onUnmounted(() => {
 .logo-section {
   display: flex;
   align-items: center;
-  padding-left: 20px;
-  padding-top: 13px;
-  padding-bottom: 13px;
+  justify-content: center;
+  padding: 20px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.logo {
-  width: 55px;
-  height: 55px;
-  border-radius: 12px;
-  margin-right: 15px;
-}
-
 .site-title {
-  font-size: 24px;
-  font-weight: 600;
+  font-size: 28px;
+  font-weight: 800;
   margin: 0;
   color: white;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-family: 'Arial Black', sans-serif;
+  display: inline-block;
+}
+
+/* 在移动端调整样式 */
+@media (max-width: 768px) {
+  .site-title {
+    font-size: 20px;
+    letter-spacing: 0.5px;
+  }
 }
 
 .category-nav {
@@ -939,31 +963,32 @@ onUnmounted(() => {
 }
 
 .category-section {
-  margin-bottom: 50px;
+  margin-bottom: 30px;
 }
 
 .category-title {
-  font-size: 32px;
+  font-size: 24px;
   font-weight: 600;
-  margin-bottom: 25px;
+  margin-top: 10px;
+  margin-bottom: 15px;
   color: #2c3e50;
   display: flex;
   align-items: center;
 }
 
 .category-title .category-icon {
-  font-size: 32px;
-  margin-right: 16px;
+  font-size: 24px;
+  margin-right: 12px;
 }
 
 .category-title .category-name {
   margin-left: 10px;
-  font-size: 26px;
+  font-size: 20px;
 }
 
 .sites-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
   gap: 20px;
 }
 
@@ -972,7 +997,7 @@ onUnmounted(() => {
   align-items: center;
   background: white;
   border-radius: 12px;
-  padding: 20px;
+  padding: 5px;
   text-decoration: none;
   color: inherit;
   transition: all 0.3s ease;
@@ -1017,9 +1042,23 @@ onUnmounted(() => {
 }
 
 .site-icon img {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
+}
+
+.text-avatar {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 50%;
+  text-transform: uppercase;
 }
 
 .site-info {
@@ -1029,7 +1068,7 @@ onUnmounted(() => {
 }
 
 .site-name {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   margin: 0 0 5px 0;
   color: #2c3e50;
