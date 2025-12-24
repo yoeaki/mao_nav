@@ -73,22 +73,47 @@
                   <!-- 顶部搜索栏 -->
       <header class="search-header">
         <div class="search-container">
-          <div class="search-engine-selector">
-            <img :src="searchEngines[selectedEngine].icon" :alt="selectedEngine" class="engine-logo" />
-            <select v-model="selectedEngine" class="engine-select">
-              <option value="google">Google</option>
-              <option value="baidu">Baidu</option>
-              <option value="bing">Bing</option>
-              <option value="duckduckgo">DuckDuckGo</option>
-            </select>
-          </div>
           <input
             type="text"
             v-model="searchQuery"
-            :placeholder="searchEngines[selectedEngine].placeholder"
+            placeholder="搜索网站..."
             class="search-input"
             @keyup.enter="handleSearch"
+            @click="handleSearchClick"
           />
+        </div>
+
+        <!-- 搜索结果展示 -->
+        <div v-if="showSearchResults && searchResults.length > 0" class="search-results">
+          <div class="search-results-header">
+            <h3>搜索结果 ({{ searchResults.length }})</h3>
+            <button class="close-results-btn" @click="closeSearchResults">×</button>
+          </div>
+          <div class="search-results-list">
+            <a
+              v-for="site in searchResults"
+              :key="site.id"
+              :href="site.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="search-result-item"
+              @click="closeSearchResults"
+            >
+              <div class="site-icon">
+                <template v-if="site.icon">
+                  <img :src="site.icon" :alt="site.name" @error="handleImageError($event, site)" />
+                </template>
+                <template v-else>
+                  <div class="text-avatar">{{ getAvatarText(site.name) }}</div>
+                </template>
+              </div>
+              <div class="site-info">
+                <h3 class="site-name">{{ site.name }}</h3>
+                <p class="site-description">{{ site.description }}</p>
+                <p class="site-url">{{ site.url }}</p>
+              </div>
+            </a>
+          </div>
         </div>
 
         <!-- 主题切换按钮 -->
@@ -222,27 +247,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useNavigation } from '@/apis/useNavigation.js'
 import { useThemeStore } from '@/stores/counter.js'
-// 导入搜索引擎logo图片
-import googleLogo from '@/assets/goolge.png'
-import baiduLogo from '@/assets/baidu.png'
-import bingLogo from '@/assets/bing.png'
-import duckLogo from '@/assets/duck.png'
+
 // 导入GitHub logo
 import githubLogo from '@/assets/github.png'
 
 // 使用导航API
-const { categories, title, defaultSearchEngine, loading, error, fetchCategories } = useNavigation()
+const { categories, title, loading, error, fetchCategories } = useNavigation()
 
 // 使用主题store
 const themeStore = useThemeStore()
 
 // 响应式数据
 const searchQuery = ref('') // 搜索查询
-const selectedEngine = ref('bing') // 选中的搜索引擎，初始值会在组件挂载后更新
 const showMobileMenu = ref(false) // 移动端菜单显示状态
+const searchResults = ref([]) // 搜索结果
+const showSearchResults = ref(false) // 是否显示搜索结果
 
 // 锁定功能相关
 const isLocked = ref(false) // 是否启用锁定功能
@@ -250,30 +272,6 @@ const isUnlocked = ref(false) // 是否已解锁
 const unlockPassword = ref('') // 解锁密码输入
 const unlocking = ref(false) // 解锁中状态
 const unlockError = ref('') // 解锁错误信息
-
-// 搜索引擎配置
-const searchEngines = {
-  google: {
-    url: 'https://www.google.com/search?q=',
-    icon: googleLogo,
-    placeholder: 'Google (点logo切换搜索引擎'
-  },
-  baidu: {
-    url: 'https://www.baidu.com/s?wd=',
-    icon: baiduLogo,
-    placeholder: '百度一下(点logo切换搜索引擎'
-  },
-  bing: {
-    url: 'https://www.bing.com/search?q=',
-    icon: bingLogo,
-    placeholder: 'Bing (点logo切换搜索引擎)'
-  },
-  duckduckgo: {
-    url: 'https://duckduckgo.com/?q=',
-    icon: duckLogo,
-    placeholder: 'DuckDuckGo (点logo切换搜索引擎)'
-  }
-}
 
 // 自定义固定时间滚动函数
 const smoothScrollTo = (container, targetTop, duration = 600) => {
@@ -375,12 +373,46 @@ const handleUnlock = async () => {
 
 // 处理搜索
 const handleSearch = () => {
-  if (!searchQuery.value.trim()) return
+  if (!searchQuery.value.trim()) return;
+  // 模糊匹配name字段（不区分大小写）
+  const query = searchQuery.value.toLowerCase();
+  const results = [];
+  categories.value.forEach(category => {
+    if (category.sites) {
+      category.sites.forEach(site => {
+        if (site.name.toLowerCase().includes(query)) {
+          results.push(site);
+        }
+      });
+    }
+  });
+  searchResults.value = results;
+  showSearchResults.value = true;
+};
 
-  const engine = searchEngines[selectedEngine.value]
-  const url = engine.url + encodeURIComponent(searchQuery.value)
-  window.open(url, '_blank')
-}
+// 关闭搜索结果
+const closeSearchResults = () => {
+  showSearchResults.value = false;
+};
+
+// 点击搜索框处理
+const handleSearchClick = () => {
+  // 如果已经有搜索内容，触发搜索并显示结果
+  if (searchQuery.value.trim()) {
+    handleSearch();
+  }
+  // 即使没有搜索内容，也可以考虑显示搜索列表（可以是所有站点或提示信息）
+  // 这里我们保持与现有逻辑一致，如果没有搜索内容则不显示结果
+};
+
+// 实时搜索监听
+watch(searchQuery, (newQuery) => {
+  if (newQuery.trim()) {
+    handleSearch();
+  } else {
+    showSearchResults.value = false;
+  }
+});
 
 // 处理图片加载错误
 const handleImageError = (event, site) => {
@@ -435,18 +467,31 @@ const openGitHub = () => {
   window.open('https://github.com/maodeyu180/mao_nav', '_blank')
 }
 
+// 点击外部区域关闭搜索列表
+const handleClickOutside = (event) => {
+  const searchResults = document.querySelector('.search-results');
+  const searchInput = document.querySelector('.search-input');
+
+  // 检查点击是否在搜索框或搜索结果区域外
+  if (searchInput && searchResults && !searchInput.contains(event.target) && !searchResults.contains(event.target)) {
+    showSearchResults.value = false;
+  }
+};
+
 // 组件挂载时获取数据
 onMounted(async () => {
   checkLockStatus() // 检查锁定状态
   await fetchCategories()
-  // 设置默认搜索引擎
-  selectedEngine.value = defaultSearchEngine.value
+  // 添加全局点击事件监听
+  document.addEventListener('click', handleClickOutside);
 })
 
 // 组件卸载时清理样式
 onUnmounted(() => {
   // 确保卸载时恢复body滚动
   document.body.style.overflow = ''
+  // 移除全局点击事件监听
+  document.removeEventListener('click', handleClickOutside);
 })
 </script>
 
@@ -1178,6 +1223,132 @@ onUnmounted(() => {
 .footer-tech {
   font-size: 12px !important;
   opacity: 0.8;
+}
+
+/* 搜索结果样式 */
+.search-results {
+  position: fixed;
+  top: 72px;
+  left: 54%;
+  transform: translateX(-50%);
+  max-width: 600px;
+  width: 100%;
+  margin: 0 20px;
+  background: white;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-height: 500px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.search-results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e9ecef;
+  background: white;
+  position: sticky;
+  top: 0;
+  z-index: 1001;
+}
+
+.search-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 15px 15px;
+  overflow-y: auto;
+  max-height: calc(500px - 60px);
+}
+
+.search-results-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.close-results-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #7f8c8d;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.close-results-btn:hover {
+  background: #f8f9fa;
+  color: #2c3e50;
+}
+
+.search-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.search-result-item:hover {
+  background: #f8f9fa;
+  border-color: #e9ecef;
+  transform: translateX(5px);
+}
+
+.search-result-item .site-info {
+  flex: 1;
+}
+
+.search-result-item .site-name {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 5px 0;
+  color: #2c3e50;
+}
+
+.search-result-item .site-description {
+  font-size: 14px;
+  color: #7f8c8d;
+  margin: 0 0 5px 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+}
+
+.search-result-item .site-url {
+  font-size: 12px;
+  color: #95a5a6;
+  margin: 0;
+  font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 响应式设计 */
